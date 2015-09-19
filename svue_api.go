@@ -3,13 +3,20 @@ package govue
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 type SVUEResponse struct {
 	XMLName xml.Name `xml:"Envelope"`
 	Result  string   `xml:"Body>ProcessWebServiceRequestResponse>ProcessWebServiceRequestResult"`
+}
+
+type SVUESignInResponse struct {
+	XMLName  xml.Name   `xml:"ChildList"`
+	Students []*Student `xml:"Child"`
 }
 
 const (
@@ -47,6 +54,17 @@ const (
 			</soap:Body>
 		</soap:Envelope>`
 )
+
+func signInStudent(username, password string) (*Student, error) {
+	signInBody := fmt.Sprintf(signInRequestBody, username, password)
+	sResp, err := callApi(strings.NewReader(signInBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return decodeStudentSignIn(sResp)
+}
 
 func callApi(body io.Reader) (*SVUEResponse, error) {
 	req, err := newSVueRequest(body)

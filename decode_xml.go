@@ -14,3 +14,13 @@ func decodeSVUEResponse(body *bytes.Buffer) (*SVUEResponse, error) {
 
 	return sVueResp, nil
 }
+
+func decodeStudentSignIn(sVueResp *SVUEResponse) (*Student, error) {
+	resp := new(SVUESignInResponse)
+
+	if err := xml.Unmarshal([]byte(sVueResp.Result), resp); err != nil {
+		return nil, err
+	}
+
+	return resp.Students[0], nil
+}
