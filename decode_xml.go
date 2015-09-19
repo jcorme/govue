@@ -77,6 +77,21 @@ func decodeStudentSignIn(sVueResp *SVUEResponse) (*Student, error) {
 	return resp.Students[0], nil
 }
 
+func decodeStudentGrades(sVueResp *SVUEResponse) (*Gradebook, error) {
+	gb := new(Gradebook)
+	d, err := respIsOk(sVueResp, "Gradebook")
+
+	if err != nil {
+		return nil, err
+	}
+
+	if err = d.Decode(gb); err != nil {
+		return nil, SVUEError{err, DecodingError}
+	}
+
+	return gb, nil
+}
+
 func respIsOk(sVueResp *SVUEResponse, expectedElement string) (*xml.Decoder, error) {
 	d := xml.NewDecoder(strings.NewReader(sVueResp.Result))
 

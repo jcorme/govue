@@ -66,6 +66,17 @@ func SignInStudent(username, password string) (*Student, error) {
 	return decodeStudentSignIn(sResp)
 }
 
+func GetStudentGrades(username, password string) (*Gradebook, error) {
+	gradesBody := fmt.Sprintf(getGradesRequestBody, username, password)
+	sResp, err := callApi(strings.NewReader(gradesBody))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return decodeStudentGrades(sResp)
+}
+
 func callApi(body io.Reader) (*SVUEResponse, error) {
 	req, err := newSVueRequest(body)
 
