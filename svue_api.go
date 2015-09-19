@@ -55,7 +55,7 @@ const (
 		</soap:Envelope>`
 )
 
-func signInStudent(username, password string) (*Student, error) {
+func SignInStudent(username, password string) (*Student, error) {
 	signInBody := fmt.Sprintf(signInRequestBody, username, password)
 	sResp, err := callApi(strings.NewReader(signInBody))
 
