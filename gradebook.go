@@ -24,7 +24,7 @@ type ReportPeriod struct {
 
 type Course struct {
 	Period       int           `xml:",attr"`
-	Name         string        `xml:"Title,attr"`
+	ID           CourseID      `xml:"Title,attr"`
 	Room         string        `xml:",attr"`
 	Teacher      string        `xml:"Staff,attr"`
 	TeacherEmail string        `xml:"StaffEMail,attr"`
@@ -58,6 +58,30 @@ type Assignment struct {
 	ScoreType   string           `xml:",attr"`
 	Points      AssignmentPoints `xml:",attr"`
 	Notes       string           `xml:",attr"`
+}
+
+type CourseID struct {
+	Name, ID string
+}
+
+func (cid *CourseID) UnmarshalXMLAttr(attr xml.Attr) error {
+	const nameRegex = "(.+?)\\s*\\((.+?)\\)"
+
+	r, err := regexp.Compile(nameRegex)
+
+	if err != nil {
+		return err
+	}
+
+	name := r.FindStringSubmatch(attr.Value)
+
+	if len(name) != 3 {
+		return fmt.Errorf("Expected course name attribute in format `Course (ID)`, received %s and found %d regex matches", attr.Value, len(name)-1)
+	}
+
+	*cid = CourseID{name[1], name[2]}
+
+	return nil
 }
 
 type Percentage struct {
