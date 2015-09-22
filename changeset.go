@@ -1,0 +1,182 @@
+package govue
+
+type Changeset struct {
+	a, b                       *Gradebook
+	aMap, bMap, normalizedBMap map[int]*Course
+
+	CourseSwitches  []*CourseSwitch
+	CourseAdditions []*Course
+	CourseDrops     []*Course
+	CourseChanges   []*CourseChange
+}
+
+type CourseSwitch struct {
+	Before, After             *Course
+	BeforePeriod, AfterPeriod int
+}
+
+type CourseChange struct {
+	GradeChange         *CourseGradeChange
+	AssignmentChanges   []*CourseAssignmentChange
+	AssignmentAdditions []*Assignment
+	AssignmentRemovals  []*Assignment
+}
+
+type CourseGradeChange struct {
+	CourseName                          string
+	GradeIncrease                       bool
+	PreviousLetterGrade, NewLetterGrade string
+	PreviousGradePct, NewGradePct       float64
+	DeltaPct                            float64
+}
+
+type CourseAssignmentChange struct {
+	AssignmentName                              string
+	ScoreIncrease, PossibleScoreChange          bool
+	PreviousAssignmentScore, NewAssignmentScore float64
+	PreviousPossibleScore, NewPossibleScore     float64
+}
+
+func CalcChangeset(a *Gradebook, b *Gradebook) *Changeset {
+	aMap, bMap := coursesAsMap(a.Courses, b.Courses)
+	cs := &Changeset{
+		a:              a,
+		b:              b,
+		aMap:           aMap,
+		bMap:           bMap,
+		normalizedBMap: make(map[int]*Course),
+	}
+
+	cs.calcChanges()
+
+	return cs
+}
+
+func coursesAsMap(acs, bcs []*Course) (map[int]*Course, map[int]*Course) {
+	acsMap, bcsMap := make(map[int]*Course), make(map[int]*Course)
+
+	for _, ac := range acs {
+		acsMap[ac.Period] = ac
+	}
+
+	for _, bc := range bcs {
+		bcsMap[bc.Period] = bc
+	}
+
+	return acsMap, bcsMap
+}
+
+func (cs *Changeset) calcChanges() {
+	cs.diffCourseSets()
+	cs.diffCourseAssignments()
+}
+
+func (cs *Changeset) diffCourseSets() {
+	aMap := cs.aMap
+	bMap := cs.bMap
+
+	for p, ac := range aMap {
+		bc, ok := bMap[p]
+
+		if ok {
+			if ac.ID.ID == bc.ID.ID {
+				cs.normalizedBMap[p] = bc
+
+				continue
+			}
+
+			c, found := findCourse(bMap, ac.ID.ID)
+
+			if found {
+				cswitch := &CourseSwitch{ac, c, ac.Period, c.Period}
+
+				cs.CourseSwitches = append(cs.CourseSwitches, cswitch)
+				cs.normalizedBMap[p] = c
+			} else {
+				cs.CourseAdditions = append(cs.CourseAdditions, bc)
+				cs.CourseDrops = append(cs.CourseDrops, ac)
+
+				delete(cs.aMap, p)
+			}
+		}
+	}
+}
+
+func (cs *Changeset) diffCourseAssignments() {
+	aMap := cs.aMap
+	bMap := cs.normalizedBMap
+
+	for p, ac := range aMap {
+		bc := bMap[p]
+		cc := new(CourseChange)
+
+		for i, am := range ac.Marks {
+			bm := bc.Marks[i]
+			notFoundAAssignments := make(map[string]*Assignment)
+			notFoundBAssignments := make(map[string]*Assignment)
+
+			for k, a := range am.Assignments {
+				b := bm.Assignments[k]
+
+				if a.GradebookID == b.GradebookID {
+					cc.diffAssignments(a, b)
+
+					continue
+				}
+
+				notFoundAAssignments[a.GradebookID] = a
+				notFoundBAssignments[b.GradebookID] = b
+			}
+
+			for gid, a := range notFoundAAssignments {
+				if b, ok := notFoundBAssignments[gid]; ok {
+					cc.diffAssignments(a, b)
+
+					delete(notFoundAAssignments, gid)
+					delete(notFoundBAssignments, gid)
+
+					continue
+				}
+
+				cc.AssignmentRemovals = append(cc.AssignmentRemovals, a)
+			}
+
+			for _, b := range notFoundBAssignments {
+				cc.AssignmentAdditions = append(cc.AssignmentAdditions, b)
+			}
+		}
+
+		cs.CourseChanges = append(cs.CourseChanges, cc)
+	}
+}
+
+func (cc *CourseChange) diffAssignments(a, b *Assignment) {
+	if a.Score.Score == b.Score.Score {
+		return
+	}
+
+	scoreIncrease := (b.Score.Score - a.Score.Score) > 0
+	possibleScoreChange := (b.Score.PossibleScore - a.Score.PossibleScore) != 0
+
+	ca := &CourseAssignmentChange{
+		b.Name,
+		scoreIncrease,
+		possibleScoreChange,
+		a.Score.Score,
+		b.Score.Score,
+		a.Score.PossibleScore,
+		b.Score.PossibleScore,
+	}
+
+	cc.AssignmentChanges = append(cc.AssignmentChanges, ca)
+}
+
+func findCourse(courses map[int]*Course, id string) (*Course, bool) {
+	for _, c := range courses {
+		if c.ID.ID == id {
+			return c, true
+		}
+	}
+
+	return nil, false
+}
