@@ -45,7 +45,8 @@ func CalcChangeset(a *Gradebook, b *Gradebook) *Changeset {
 		bMap: bMap,
 	}
 
-	cs.calcChanges()
+	cs.diffCourseSets()
+	cs.diffCourseAssignments()
 
 	return cs
 }
@@ -62,11 +63,6 @@ func coursesAsMap(acs, bcs []*Course) (acsMap, bcsMap map[int]*Course) {
 	}
 
 	return acsMap, bcsMap
-}
-
-func (cs *Changeset) calcChanges() {
-	cs.diffCourseSets()
-	cs.diffCourseAssignments()
 }
 
 func (cs *Changeset) diffCourseSets() {
