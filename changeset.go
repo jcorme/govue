@@ -1,9 +1,8 @@
 package govue
 
 type Changeset struct {
-	a, b                       *Gradebook
-	aMap, bMap, normalizedBMap map[int]*Course
-
+	a, b            *Gradebook
+	aMap, bMap      map[int]*Course
 	CourseSwitches  []*CourseSwitch
 	CourseAdditions []*Course
 	CourseDrops     []*Course
@@ -40,11 +39,10 @@ type CourseAssignmentChange struct {
 func CalcChangeset(a *Gradebook, b *Gradebook) *Changeset {
 	aMap, bMap := coursesAsMap(a.Courses, b.Courses)
 	cs := &Changeset{
-		a:              a,
-		b:              b,
-		aMap:           aMap,
-		bMap:           bMap,
-		normalizedBMap: make(map[int]*Course),
+		a:    a,
+		b:    b,
+		aMap: aMap,
+		bMap: bMap,
 	}
 
 	cs.calcChanges()
@@ -72,14 +70,14 @@ func (cs *Changeset) calcChanges() {
 }
 
 func (cs *Changeset) diffCourseSets() {
-	aMap := cs.aMap
-	bMap := cs.bMap
+	aMap, bMap := cs.aMap, cs.bMap
+	normalizedBMap := make(map[int]*Course)
 
 	findCourseSwitch := func(p int, ac *Course) bool {
 		c, k, found := findCourse(bMap, ac.ID.ID)
 
 		if found {
-			cs.normalizedBMap[p] = c
+			normalizedBMap[p] = c
 
 			cswitch := &CourseSwitch{ac, c, ac.Period, c.Period}
 
@@ -98,7 +96,7 @@ func (cs *Changeset) diffCourseSets() {
 
 		if ok {
 			if ac.ID.ID == bc.ID.ID {
-				cs.normalizedBMap[p] = bc
+				normalizedBMap[p] = bc
 
 				delete(cs.bMap, p)
 
@@ -121,18 +119,19 @@ func (cs *Changeset) diffCourseSets() {
 		c, k, found := findCourse(aMap, bc.ID.ID)
 
 		if found {
-			cs.normalizedBMap[k] = c
+			normalizedBMap[k] = c
 		} else {
 			cs.CourseAdditions = append(cs.CourseAdditions, bc)
 		}
 
 		delete(cs.bMap, p)
 	}
+
+	cs.bMap = normalizedBMap
 }
 
 func (cs *Changeset) diffCourseAssignments() {
-	aMap := cs.aMap
-	bMap := cs.normalizedBMap
+	aMap, bMap := cs.aMap, cs.bMap
 
 	for p, ac := range aMap {
 		bc := bMap[p]
