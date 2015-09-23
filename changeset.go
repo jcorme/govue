@@ -52,8 +52,8 @@ func CalcChangeset(a *Gradebook, b *Gradebook) *Changeset {
 	return cs
 }
 
-func coursesAsMap(acs, bcs []*Course) (map[int]*Course, map[int]*Course) {
-	acsMap, bcsMap := make(map[int]*Course), make(map[int]*Course)
+func coursesAsMap(acs, bcs []*Course) (acsMap, bcsMap map[int]*Course) {
+	acsMap, bcsMap = make(map[int]*Course), make(map[int]*Course)
 
 	for _, ac := range acs {
 		acsMap[ac.Period] = ac
@@ -75,6 +75,24 @@ func (cs *Changeset) diffCourseSets() {
 	aMap := cs.aMap
 	bMap := cs.bMap
 
+	findCourseSwitch := func(p int, ac *Course) bool {
+		c, k, found := findCourse(bMap, ac.ID.ID)
+
+		if found {
+			cs.normalizedBMap[p] = c
+
+			cswitch := &CourseSwitch{ac, c, ac.Period, c.Period}
+
+			cs.CourseSwitches = append(cs.CourseSwitches, cswitch)
+
+			delete(cs.bMap, k)
+
+			return true
+		}
+
+		return false
+	}
+
 	for p, ac := range aMap {
 		bc, ok := bMap[p]
 
@@ -82,23 +100,33 @@ func (cs *Changeset) diffCourseSets() {
 			if ac.ID.ID == bc.ID.ID {
 				cs.normalizedBMap[p] = bc
 
+				delete(cs.bMap, p)
+
 				continue
-			}
-
-			c, found := findCourse(bMap, ac.ID.ID)
-
-			if found {
-				cswitch := &CourseSwitch{ac, c, ac.Period, c.Period}
-
-				cs.CourseSwitches = append(cs.CourseSwitches, cswitch)
-				cs.normalizedBMap[p] = c
 			} else {
-				cs.CourseAdditions = append(cs.CourseAdditions, bc)
+				_ = findCourseSwitch(p, ac)
+			}
+		} else {
+			found := findCourseSwitch(p, ac)
+
+			if !found {
 				cs.CourseDrops = append(cs.CourseDrops, ac)
 
 				delete(cs.aMap, p)
 			}
 		}
+	}
+
+	for p, bc := range bMap {
+		c, k, found := findCourse(aMap, bc.ID.ID)
+
+		if found {
+			cs.normalizedBMap[k] = c
+		} else {
+			cs.CourseAdditions = append(cs.CourseAdditions, bc)
+		}
+
+		delete(cs.bMap, p)
 	}
 }
 
@@ -171,12 +199,12 @@ func (cc *CourseChange) diffAssignments(a, b *Assignment) {
 	cc.AssignmentChanges = append(cc.AssignmentChanges, ca)
 }
 
-func findCourse(courses map[int]*Course, id string) (*Course, bool) {
-	for _, c := range courses {
+func findCourse(courses map[int]*Course, id string) (*Course, int, bool) {
+	for k, c := range courses {
 		if c.ID.ID == id {
-			return c, true
+			return c, k, true
 		}
 	}
 
-	return nil, false
+	return nil, 0, false
 }
