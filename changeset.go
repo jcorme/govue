@@ -16,6 +16,7 @@ type CourseSwitch struct {
 }
 
 type CourseChange struct {
+	Course              *Course
 	GradeChange         *CourseGradeChange
 	AssignmentChanges   []*CourseAssignmentChange
 	AssignmentAdditions []*Assignment
@@ -23,7 +24,6 @@ type CourseChange struct {
 }
 
 type CourseGradeChange struct {
-	CourseName                          string
 	GradeIncrease                       bool
 	PreviousLetterGrade, NewLetterGrade string
 	PreviousGradePct, NewGradePct       float64
@@ -31,7 +31,7 @@ type CourseGradeChange struct {
 }
 
 type CourseAssignmentChange struct {
-	AssignmentName                              string
+	Assignment                                  *Assignment
 	ScoreIncrease, PossibleScoreChange          bool
 	PreviousAssignmentScore, NewAssignmentScore float64
 	PreviousPossibleScore, NewPossibleScore     float64
@@ -136,7 +136,7 @@ func (cs *Changeset) diffCourseAssignments() {
 
 	for p, ac := range aMap {
 		bc := bMap[p]
-		cc := new(CourseChange)
+		cc := &CourseChange{Course: ac}
 
 		for i, am := range ac.Marks {
 			bm := bc.Marks[i]
@@ -187,7 +187,7 @@ func (cc *CourseChange) diffAssignments(a, b *Assignment) {
 	possibleScoreChange := (b.Score.PossibleScore - a.Score.PossibleScore) != 0
 
 	ca := &CourseAssignmentChange{
-		b.Name,
+		b,
 		scoreIncrease,
 		possibleScoreChange,
 		a.Score.Score,
