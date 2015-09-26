@@ -206,3 +206,15 @@ func stringsToFloats(strs []string) ([]float64, error) {
 
 	return fs, nil
 }
+
+func (g *Gradebook) CurrentReportPeriodIndex() int {
+	gradePeriod := g.CurrentReportPeriod.GradePeriod
+
+	for _, p := range g.ReportingPeriods {
+		if p.GradePeriod == gradePeriod {
+			return p.Index
+		}
+	}
+
+	return 0
+}

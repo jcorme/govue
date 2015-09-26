@@ -1,5 +1,9 @@
 package govue
 
+import (
+	"strings"
+)
+
 type Changeset struct {
 	a, b            *Gradebook
 	aMap, bMap      map[int]*Course
@@ -131,6 +135,20 @@ func (cs *Changeset) diffCourseAssignments() {
 
 	for p, ac := range aMap {
 		bc := bMap[p]
+
+		aGradePeriod := cs.a.CurrentReportPeriod.GradePeriod
+		bGradePeriod := cs.b.CurrentReportPeriod.GradePeriod
+
+		if strings.Contains(aGradePeriod, "Q1") || strings.Contains(aGradePeriod, "Q2") {
+			if strings.Contains(bGradePeriod, "Q3") || strings.Contains(bGradePeriod, "Q4") {
+				return
+			}
+		} else if strings.Contains(aGradePeriod, "Q3") || strings.Contains(aGradePeriod, "Q4") {
+			if strings.Contains(bGradePeriod, "Q1") || strings.Contains(bGradePeriod, "Q2") {
+				return
+			}
+		}
+
 		cc := &CourseChange{Course: ac}
 
 		for i, am := range ac.Marks {
@@ -169,7 +187,25 @@ func (cs *Changeset) diffCourseAssignments() {
 			}
 		}
 
-		if cc.GradeChange != nil {
+		aMark := ac.Marks[cs.a.CurrentReportPeriodIndex()]
+		bMark := bc.Marks[cs.b.CurrentReportPeriodIndex()]
+
+		if ps, ns := aMark.RawGradeScore, bMark.RawGradeScore; (ns - ps) != 0 {
+			change := ns - ps
+
+			cc.GradeChange = &CourseGradeChange{
+				DeltaPct:            change,
+				GradeIncrease:       change > 0,
+				NewGradePct:         ns,
+				NewLetterGrade:      bMark.LetterGrade,
+				PreviousGradePct:    ps,
+				PreviousLetterGrade: aMark.LetterGrade,
+			}
+		}
+
+		sum := len(cc.AssignmentChanges) + len(cc.AssignmentRemovals) + len(cc.AssignmentRemovals)
+
+		if cc.GradeChange != nil || sum > 0 {
 			cs.CourseChanges = append(cs.CourseChanges, cc)
 		}
 	}
