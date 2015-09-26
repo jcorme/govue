@@ -8,60 +8,156 @@ import (
 	"time"
 )
 
+// A Gradebook holds a student's courses, including their grades and assignments in
+// those courses, and their school's reporting periods ((mid-)terms, semesters, etc...).
 type Gradebook struct {
-	XMLName             xml.Name        `xml:"Gradebook"`
-	ReportingPeriods    []*ReportPeriod `xml:"ReportingPeriods>ReportPeriod"`
-	CurrentReportPeriod *ReportPeriod   `xml:"ReportingPeriod"`
-	Courses             []*Course       `xml:"Courses>Course"`
+	XMLName xml.Name `xml:"Gradebook"`
+
+	// ReportingPeriods holds all the grading periods of the student's school.
+	// If the school uses a semester schedule with (mid-)terms, there will be
+	// eight reporting periods.
+	ReportingPeriods []*ReportPeriod `xml:"ReportingPeriods>ReportPeriod"`
+
+	// CurrentReportPeriod is the school's current grading period.
+	CurrentReportPeriod *ReportPeriod `xml:"ReportingPeriod"`
+
+	// Courses holds all of the student's classes, which should be ordered by
+	// the class's period in the student's schedule.
+	Courses []*Course `xml:"Courses>Course"`
 }
 
+// A ReportPeriod represents one grading period for a school.
+// This usually means each ReportPeriod is a half of a quarter (term).
 type ReportPeriod struct {
-	Index       int           `xml:",attr"`
-	GradePeriod string        `xml:",attr"`
-	StartDate   GradebookDate `xml:",attr"`
-	EndDate     GradebookDate `xml:",attr"`
+	// Index is a zero-based index representing the ReportPeriod's place in
+	// the ReportingPeriods set.
+	Index int `xml:",attr"`
+
+	// GradePeriod is the name of the grading period.
+	GradePeriod string `xml:",attr"`
+
+	// StartDate is when the grading period begins.
+	StartDate GradebookDate `xml:",attr"`
+
+	// EndDate is when the grading period ends.
+	EndDate GradebookDate `xml:",attr"`
 }
 
+// A Course represents one of a student's classes.
 type Course struct {
-	Period       int           `xml:",attr"`
-	ID           CourseID      `xml:"Title,attr"`
-	Room         string        `xml:",attr"`
-	Teacher      string        `xml:"Staff,attr"`
-	TeacherEmail string        `xml:"StaffEMail,attr"`
-	Marks        []*CourseMark `xml:"Marks>Mark"`
+	// Period is the period of the day in which the student has this class.
+	Period int `xml:",attr"`
+
+	// ID holds identification information for this class, which includes
+	// its Name and ID within the school's/StudentVUE's systems.
+	ID CourseID `xml:"Title,attr"`
+
+	// Room is the room number of this class inside the school.
+	Room string `xml:",attr"`
+
+	// Teacher is the name of the instructor of this class.
+	Teacher string `xml:"Staff,attr"`
+
+	// TeacherEmail is the email of this class's instructor.
+	TeacherEmail string `xml:"StaffEMail,attr"`
+
+	// Marks holds the student's grading, including assignments, information
+	//for each grading period.
+	Marks []*CourseMark `xml:"Marks>Mark"`
 }
 
+// A CourseMark holds a student's grades and assignments for a single grading period.
 type CourseMark struct {
-	Name           string                 `xml:"MarkName,attr"`
-	LetterGrade    string                 `xml:"CalculatedScoreString,attr"`
-	RawGradeScore  float64                `xml:"CalculatedScoreRaw,attr"`
+	// Name is the name of the grading period.
+	Name string `xml:"MarkName,attr"`
+
+	// LetterGrade is the student's raw (number) grade mapped to a letter.
+	// Usually mapped as such:
+	//		90+ -> A
+	//		80+ -> B
+	//		70+ -> C
+	//		60+ -> D
+	//		Else -> F
+	LetterGrade string `xml:"CalculatedScoreString,attr"`
+
+	// RawGradeScore is the student's raw percentage grade for the grading period.
+	RawGradeScore float64 `xml:"CalculatedScoreRaw,attr"`
+
+	// GradeSummaries holds the grade summaries for each of the course's weighted categories.
+	// For example, if a course weighs Tests and Homework as separate categories, those will
+	// be contained here with information including the category's weighted percentage and
+	// letter grade.
 	GradeSummaries []*AssignmentGradeCalc `xml:"GradeCalculationSummary>AssignmentGradeCalc"`
-	Assignments    []*Assignment          `xml:"Assignments>Assignment"`
+
+	// Assignments holds all of the course's assignments for the grading period.
+	Assignments []*Assignment `xml:"Assignments>Assignment"`
 }
 
+// AssignmentGradeCalc represents one of a course's weighted categories.
+// This may include Tests, Homework, Class Work, etc... These are created and decided
+// by the course's instructor.
 type AssignmentGradeCalc struct {
-	Type               string     `xml:",attr"`
-	Weight             Percentage `xml:",attr"`
-	Points             float64    `xml:",attr"`
-	PointsPossible     float64    `xml:",attr"`
+	// Type is the name of the weighted category.
+	Type string `xml:",attr"`
+
+	// Weight is the weight of the category of the student's grade in percent.
+	Weight Percentage `xml:",attr"`
+
+	// Points is the number of points earned by the student in this category.
+	Points float64 `xml:",attr"`
+
+	// PointsPossible is the number of points that can be earned by the student in this category.
+	PointsPossible float64 `xml:",attr"`
+
+	// WeightedPercentage is the impact of this category on the student's overall
+	// grade in percent.
 	WeightedPercentage Percentage `xml:"WeightedPct,attr"`
-	LetterGrade        string     `xml:"CalculatedMark,attr"`
+
+	// LetterGrade is the student's raw (number) grade mapped to a letter for this category.
+	LetterGrade string `xml:"CalculatedMark,attr"`
 }
 
+// An Assignment is a single entry into a course's gradebook by an instructor.
 type Assignment struct {
-	GradebookID string           `xml:",attr"`
-	Name        string           `xml:"Measure,attr"`
-	Type        string           `xml:",attr"`
-	Date        GradebookDate    `xml:",attr"`
-	DueDate     GradebookDate    `xml:",attr"`
-	Score       AssignmentScore  `xml:",attr"`
-	ScoreType   string           `xml:",attr"`
-	Points      AssignmentPoints `xml:",attr"`
-	Notes       string           `xml:",attr"`
+	// GradebookID is the internal ID given to the assignment by StudentVUE.
+	GradebookID string `xml:",attr"`
+
+	// Name is the name of the assignment entry.
+	Name string `xml:"Measure,attr"`
+
+	// Type is the weighted category to which the assignment belongs.
+	Type string `xml:",attr"`
+
+	// Date is the date on which the assignment was entered into the gradebook
+	// by the instructor.
+	Date GradebookDate `xml:",attr"`
+
+	// DueDate is the date on which the assignment was due for the student.
+	DueDate GradebookDate `xml:",attr"`
+
+	// Score holds the student's earned and possible raw score of the assignment.
+	Score AssignmentScore `xml:",attr"`
+
+	// ScoreType is the kind of score represented by the Score field; e.g. `Raw Score.`
+	ScoreType string `xml:",attr"`
+
+	// Points is the number of points for which the assignment actually counted.
+	// For example, an assignment score may be out of 20, but the instructor may
+	// choose to scale it down to only be worth 5 points (towards calculating the
+	// student's grade) or scale it up to be worth 80 points.
+	Points AssignmentPoints `xml:",attr"`
+
+	// Notes is any comment added by the instructor on the assignment entry.
+	Notes string `xml:",attr"`
 }
 
+// A CourseID holds the identification information for a class.
 type CourseID struct {
-	Name, ID string
+	// ID is the school's/StudentVUE's internal ID for the class.
+	ID string
+
+	// Name is the official name of the class.
+	Name string
 }
 
 func (cid *CourseID) UnmarshalXMLAttr(attr xml.Attr) error {
@@ -84,6 +180,7 @@ func (cid *CourseID) UnmarshalXMLAttr(attr xml.Attr) error {
 	return nil
 }
 
+// A Percentage is a floating-point number representing a percentage.
 type Percentage struct {
 	float64
 }
@@ -106,6 +203,7 @@ func (p *Percentage) UnmarshalXMLAttr(attr xml.Attr) error {
 	return nil
 }
 
+// A GradebookDate holds a timestamp parsed from the format of StudentVUE's systems.
 type GradebookDate struct {
 	time.Time
 }
@@ -124,9 +222,16 @@ func (gd *GradebookDate) UnmarshalXMLAttr(attr xml.Attr) error {
 	return nil
 }
 
+// An AssignmentScore holds the score information for a single assignment for a student.
 type AssignmentScore struct {
-	Graded               bool
-	Score, PossibleScore float64
+	// Graded denotes whether the assignment has been graded or not.
+	Graded bool
+
+	// Score is the number of points earned on the assignment by the student.
+	Score float64
+
+	// PossibleScore is the number of points that could be earned by the student.
+	PossibleScore float64
 }
 
 func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
@@ -161,8 +266,16 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 	return nil
 }
 
+// An AssignmentPoints holds an assignment's actual score for a student.
+// The different between AssignmentScore and AssignmentPoints is that an assignment's
+// score is a raw score, while the points may be either the score scaled up or down
+// to affect the student's actual grade differently.
 type AssignmentPoints struct {
-	Points, PossiblePoints float64
+	// Points is the number of points that the student received on the assignment.
+	Points float64
+
+	// PossiblePoints is the number of points the student could receive on the assignment.
+	PossiblePoints float64
 }
 
 func (ap *AssignmentPoints) UnmarshalXMLAttr(attr xml.Attr) error {
@@ -207,6 +320,8 @@ func stringsToFloats(strs []string) ([]float64, error) {
 	return fs, nil
 }
 
+// CurrentReportPeriodIndex returns the position of the current grading
+// period in the ReportingPeriods field of a Gradebook.
 func (g *Gradebook) CurrentReportPeriodIndex() int {
 	gradePeriod := g.CurrentReportPeriod.GradePeriod
 
