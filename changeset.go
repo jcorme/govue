@@ -169,7 +169,9 @@ func (cs *Changeset) diffCourseAssignments() {
 			}
 		}
 
-		cs.CourseChanges = append(cs.CourseChanges, cc)
+		if cc.GradeChange != nil {
+			cs.CourseChanges = append(cs.CourseChanges, cc)
+		}
 	}
 }
 
