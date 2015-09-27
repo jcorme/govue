@@ -56,6 +56,15 @@ const (
 )
 
 func SignInStudent(username, password string) (*Student, error) {
+	escapedAuth, err := escapeStringsForXml(username, password)
+
+	if err != nil {
+		return nil, err
+	}
+
+	username = escapedAuth[0]
+	password = escapedAuth[1]
+
 	signInBody := fmt.Sprintf(signInRequestBody, username, password)
 	sResp, err := callApi(strings.NewReader(signInBody))
 
@@ -67,6 +76,15 @@ func SignInStudent(username, password string) (*Student, error) {
 }
 
 func GetStudentGrades(username, password string) (*Gradebook, error) {
+	escapedAuth, err := escapeStringsForXml(username, password)
+
+	if err != nil {
+		return nil, err
+	}
+
+	username = escapedAuth[0]
+	password = escapedAuth[1]
+
 	gradesBody := fmt.Sprintf(getGradesRequestBody, username, password)
 	sResp, err := callApi(strings.NewReader(gradesBody))
 
@@ -110,4 +128,31 @@ func newSVueRequest(body io.Reader) (*http.Request, error) {
 	req.Header.Set("SOAPAction", soapAction)
 
 	return req, nil
+}
+
+func escapeStringsForXml(ss ...string) ([]string, error) {
+	strs := make([]string, 0, len(ss))
+
+	for _, s := range ss {
+		s, err := escapeXmlText(s)
+
+		if err != nil {
+			return nil, err
+		}
+
+		strs = append(strs, s)
+	}
+
+	return strs, nil
+}
+
+func escapeXmlText(s string) (string, error) {
+	buffer := new(bytes.Buffer)
+	err := xml.EscapeText(buffer, []byte(s))
+
+	if err != nil {
+		return "", err
+	}
+
+	return buffer.String(), nil
 }
