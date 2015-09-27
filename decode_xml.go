@@ -132,6 +132,8 @@ func decodeRespError(sVueResp *SVUEResponse) error {
 	switch {
 	case strings.Contains(sErr.Message, "The user name or password is incorrect."):
 		return SVUEError{nil, InvalidCredentialsError}
+	case strings.Contains(sErr.Message, "Invalid user id or password"):
+		return SVUEError{nil, InvalidCredentialsError}
 	default:
 		return SVUEError{nil, UnexpectedError}
 	}
