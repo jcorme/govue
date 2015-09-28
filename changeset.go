@@ -34,7 +34,8 @@ type CourseGradeChange struct {
 }
 
 type CourseAssignmentChange struct {
-	Assignment                             *Assignment
+	Before, After                          *Assignment
+	NameChange                             bool
 	ScoreIncrease, PossibleScoreChange     bool
 	PointsIncrease, PossiblePointsIncrease bool
 	PreviousScore, NewScore                *AssignmentScore
@@ -213,9 +214,7 @@ func (cs *Changeset) diffCourseAssignments() {
 }
 
 func (cc *CourseChange) diffAssignments(a, b *Assignment) {
-	if a.Score.Score == b.Score.Score {
-		return
-	}
+	nameChange := a.Name != b.Name
 
 	scoreIncrease := (b.Score.Score - a.Score.Score) > 0
 	possibleScoreChange := (b.Score.PossibleScore - a.Score.PossibleScore) != 0
@@ -223,8 +222,14 @@ func (cc *CourseChange) diffAssignments(a, b *Assignment) {
 	pointsIncrease := (b.Points.Points - a.Points.Points) > 0
 	possiblePointsChange := (b.Points.PossiblePoints - a.Points.PossiblePoints) != 0
 
+	if !nameChange && !scoreIncrease && !possibleScoreChange && !pointsIncrease && !possiblePointsChange {
+		return
+	}
+
 	ca := &CourseAssignmentChange{
+		a,
 		b,
+		nameChange,
 		scoreIncrease,
 		possibleScoreChange,
 		pointsIncrease,
