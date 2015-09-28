@@ -34,13 +34,11 @@ type CourseGradeChange struct {
 }
 
 type CourseAssignmentChange struct {
-	Assignment                                  *Assignment
-	ScoreIncrease, PossibleScoreChange          bool
-	PointsIncrease, PossiblePointsIncrease      bool
-	PreviousAssignmentScore, NewAssignmentScore float64
-	PreviousPossibleScore, NewPossibleScore     float64
-	PreviousPoints, NewPoints                   float64
-	PreviousPossiblePoints, NewPossiblePoints   float64
+	Assignment                             *Assignment
+	ScoreIncrease, PossibleScoreChange     bool
+	PointsIncrease, PossiblePointsIncrease bool
+	PreviousScore, NewScore                *AssignmentScore
+	PreviousPoints, NewPoints              *AssignmentPoints
 }
 
 func CalcChangeset(a *Gradebook, b *Gradebook) *Changeset {
@@ -231,14 +229,10 @@ func (cc *CourseChange) diffAssignments(a, b *Assignment) {
 		possibleScoreChange,
 		pointsIncrease,
 		possiblePointsChange,
-		a.Score.Score,
-		b.Score.Score,
-		a.Score.PossibleScore,
-		b.Score.PossibleScore,
-		a.Points.Points,
-		b.Points.Points,
-		a.Points.PossiblePoints,
-		b.Points.PossiblePoints,
+		&a.Score,
+		&b.Score,
+		&a.Points,
+		&b.Points,
 	}
 
 	cc.AssignmentChanges = append(cc.AssignmentChanges, ca)
