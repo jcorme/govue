@@ -164,7 +164,7 @@ type CourseID struct {
 }
 
 func (cid *CourseID) UnmarshalXMLAttr(attr xml.Attr) error {
-	const nameRegex = "(.+?)\\s*\\((.+?)\\)"
+	const nameRegex = "(.+?)\\s*(\\(.+?\\))"
 
 	r, err := regexp.Compile(nameRegex)
 
@@ -178,7 +178,25 @@ func (cid *CourseID) UnmarshalXMLAttr(attr xml.Attr) error {
 		return fmt.Errorf("Expected course name attribute in format `Course (ID)`, received %s and found %d regex matches", attr.Value, len(name)-1)
 	}
 
-	*cid = CourseID{name[1], name[2]}
+	var (
+		id    string
+		cname string
+	)
+
+	for i, g := range name[1:] {
+		if rune(g[0]) == '(' && rune(g[len(g)-1]) == ')' {
+			id = g[1 : len(g)-1]
+			cname = name[i]
+
+			break
+		}
+	}
+
+	if id == "" {
+		return fmt.Errorf("Unable to parse out course name and ID from `%s`, got `%v`", attr.Value, name)
+	}
+
+	*cid = CourseID{id, cname}
 
 	return nil
 }
