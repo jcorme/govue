@@ -13,28 +13,28 @@ import (
 type Gradebook struct {
 	XMLName xml.Name `xml:"Gradebook"`
 
-	// ReportingPeriods holds all the grading periods of the student's school.
+	// GradingPeriod holds all the grading periods of the student's school.
 	// If the school uses a semester schedule with (mid-)terms, there will be
 	// eight reporting periods.
-	ReportingPeriods []*ReportPeriod `xml:"ReportingPeriods>ReportPeriod"`
+	GradingPeriods []*GradingPeriod `xml:"ReportingPeriods>ReportPeriod"`
 
-	// CurrentReportPeriod is the school's current grading period.
-	CurrentReportPeriod *ReportPeriod `xml:"ReportingPeriod"`
+	// CurrentGradingPeriod is the school's current grading period.
+	CurrentGradingPeriod *GradingPeriod `xml:"ReportingPeriod"`
 
 	// Courses holds all of the student's classes, which should be ordered by
 	// the class's period in the student's schedule.
 	Courses []*Course `xml:"Courses>Course"`
 }
 
-// A ReportPeriod represents one grading period for a school.
-// This usually means each ReportPeriod is a half of a quarter (term).
-type ReportPeriod struct {
-	// Index is a zero-based index representing the ReportPeriod's place in
-	// the ReportingPeriods set.
+// A GradingPeriod represents one grading period for a school.
+// This usually means each GradingPeriod is a half of a quarter (term).
+type GradingPeriod struct {
+	// Index is a zero-based index representing the GradingPeriod 's place in
+	// the GradingPeriods set.
 	Index int `xml:",attr"`
 
-	// GradePeriod is the name of the grading period.
-	GradePeriod string `xml:",attr"`
+	// Name is the name of the grading period.
+	Name string `xml:"GradePeriod,attr"`
 
 	// StartDate is when the grading period begins.
 	StartDate GradebookDate `xml:",attr"`
@@ -64,6 +64,9 @@ type Course struct {
 	// Marks holds the student's grading, including assignments, information
 	//for each grading period.
 	Marks []*CourseMark `xml:"Marks>Mark"`
+
+	// CurrentMark points to the mark for the current grading period.
+	CurrentMark *CourseMark `xml:"-"`
 }
 
 // A CourseMark holds a student's grades and assignments for a single grading period.
@@ -320,14 +323,14 @@ func stringsToFloats(strs []string) ([]float64, error) {
 	return fs, nil
 }
 
-// CurrentReportPeriodIndex returns the position of the current grading
+// CurrentGradingPeriodIndex returns the position of the current grading
 // period in the ReportingPeriods field of a Gradebook.
-func (g *Gradebook) CurrentReportPeriodIndex() int {
-	gradePeriod := g.CurrentReportPeriod.GradePeriod
+func (g *Gradebook) CurrentGradingPeriodIndex() int {
+	gradePeriod := g.CurrentGradingPeriod.Name
 
-	for _, p := range g.ReportingPeriods {
-		if p.GradePeriod == gradePeriod {
-			return p.Index
+	for _, p := range g.GradingPeriods {
+		if p.Name == gradePeriod {
+			return p.Index / 2
 		}
 	}
 

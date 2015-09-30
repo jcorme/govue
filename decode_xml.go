@@ -89,6 +89,10 @@ func decodeStudentGrades(sVueResp *SVUEResponse) (*Gradebook, error) {
 		return nil, SVUEError{err, DecodingError}
 	}
 
+	for _, c := range gb.Courses {
+		c.CurrentMark = c.Marks[gb.CurrentGradingPeriodIndex()]
+	}
+
 	return gb, nil
 }
 

@@ -36,6 +36,7 @@ type CourseGradeChange struct {
 type CourseAssignmentChange struct {
 	Before, After                          *Assignment
 	NameChange                             bool
+	ScoreChange, PointsChange              bool
 	ScoreIncrease, PossibleScoreChange     bool
 	PointsIncrease, PossiblePointsIncrease bool
 	PreviousScore, NewScore                *AssignmentScore
@@ -138,8 +139,8 @@ func (cs *Changeset) diffCourseAssignments() {
 	for p, ac := range aMap {
 		bc := bMap[p]
 
-		aGradePeriod := cs.a.CurrentReportPeriod.GradePeriod
-		bGradePeriod := cs.b.CurrentReportPeriod.GradePeriod
+		aGradePeriod := cs.a.CurrentGradingPeriod.Name
+		bGradePeriod := cs.b.CurrentGradingPeriod.Name
 
 		if strings.Contains(aGradePeriod, "Q1") || strings.Contains(aGradePeriod, "Q2") {
 			if strings.Contains(bGradePeriod, "Q3") || strings.Contains(bGradePeriod, "Q4") {
@@ -151,57 +152,53 @@ func (cs *Changeset) diffCourseAssignments() {
 			}
 		}
 
+		am := ac.CurrentMark
+		bm := bc.CurrentMark
 		cc := &CourseChange{Course: ac}
 
-		for i, am := range ac.Marks {
-			bm := bc.Marks[i]
-			notFoundAAssignments := make(map[string]*Assignment)
-			notFoundBAssignments := make(map[string]*Assignment)
+		notFoundAAssignments := make(map[string]*Assignment)
+		notFoundBAssignments := make(map[string]*Assignment)
 
-			for k, a := range am.Assignments {
-				b := bm.Assignments[k]
+		for k, a := range am.Assignments {
+			b := bm.Assignments[k]
 
-				if a.GradebookID == b.GradebookID {
-					cc.diffAssignments(a, b)
+			if a.GradebookID == b.GradebookID {
+				cc.diffAssignments(a, b)
 
-					continue
-				}
-
-				notFoundAAssignments[a.GradebookID] = a
-				notFoundBAssignments[b.GradebookID] = b
+				continue
 			}
 
-			for gid, a := range notFoundAAssignments {
-				if b, ok := notFoundBAssignments[gid]; ok {
-					cc.diffAssignments(a, b)
-
-					delete(notFoundAAssignments, gid)
-					delete(notFoundBAssignments, gid)
-
-					continue
-				}
-
-				cc.AssignmentRemovals = append(cc.AssignmentRemovals, a)
-			}
-
-			for _, b := range notFoundBAssignments {
-				cc.AssignmentAdditions = append(cc.AssignmentAdditions, b)
-			}
+			notFoundAAssignments[a.GradebookID] = a
+			notFoundBAssignments[b.GradebookID] = b
 		}
 
-		aMark := ac.Marks[cs.a.CurrentReportPeriodIndex()]
-		bMark := bc.Marks[cs.b.CurrentReportPeriodIndex()]
+		for gid, a := range notFoundAAssignments {
+			if b, ok := notFoundBAssignments[gid]; ok {
+				cc.diffAssignments(a, b)
 
-		if ps, ns := aMark.RawGradeScore, bMark.RawGradeScore; (ns - ps) != 0 {
+				delete(notFoundAAssignments, gid)
+				delete(notFoundBAssignments, gid)
+
+				continue
+			}
+
+			cc.AssignmentRemovals = append(cc.AssignmentRemovals, a)
+		}
+
+		for _, b := range notFoundBAssignments {
+			cc.AssignmentAdditions = append(cc.AssignmentAdditions, b)
+		}
+
+		if ps, ns := am.RawGradeScore, am.RawGradeScore; (ns - ps) != 0 {
 			change := ns - ps
 
 			cc.GradeChange = &CourseGradeChange{
 				DeltaPct:            change,
 				GradeIncrease:       change > 0,
 				NewGradePct:         ns,
-				NewLetterGrade:      bMark.LetterGrade,
+				NewLetterGrade:      bm.LetterGrade,
 				PreviousGradePct:    ps,
-				PreviousLetterGrade: aMark.LetterGrade,
+				PreviousLetterGrade: am.LetterGrade,
 			}
 		}
 
@@ -216,20 +213,25 @@ func (cs *Changeset) diffCourseAssignments() {
 func (cc *CourseChange) diffAssignments(a, b *Assignment) {
 	nameChange := a.Name != b.Name
 
-	scoreIncrease := (b.Score.Score - a.Score.Score) > 0
+	scoreChange := (b.Score.Score - a.Score.Score) != 0
 	possibleScoreChange := (b.Score.PossibleScore - a.Score.PossibleScore) != 0
 
-	pointsIncrease := (b.Points.Points - a.Points.Points) > 0
+	pointsChange := (b.Points.Points - a.Points.Points) != 0
 	possiblePointsChange := (b.Points.PossiblePoints - a.Points.PossiblePoints) != 0
 
-	if !nameChange && !scoreIncrease && !possibleScoreChange && !pointsIncrease && !possiblePointsChange {
+	if !nameChange && !scoreChange && !possibleScoreChange && !pointsChange && !possiblePointsChange {
 		return
 	}
+
+	scoreIncrease := (b.Score.Score - a.Score.Score) > 0
+	pointsIncrease := (b.Points.Points - a.Points.Points) > 0
 
 	ca := &CourseAssignmentChange{
 		a,
 		b,
 		nameChange,
+		scoreChange,
+		pointsChange,
 		scoreIncrease,
 		possibleScoreChange,
 		pointsIncrease,
