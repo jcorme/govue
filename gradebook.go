@@ -251,6 +251,10 @@ type AssignmentScore struct {
 	// NotDue indicates if the assignment is not due yet.
 	NotDue bool
 
+	// NotForGrading indicates that an assignment is either not to be graded yet
+	// or is in the gradebook just for organizational purposes (?)
+	NotForGrading bool
+
 	// Score is the number of points earned on the assignment by the student.
 	Score float64
 
@@ -259,12 +263,17 @@ type AssignmentScore struct {
 }
 
 func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
-	if attr.Value == "Not Graded" {
-		*as = AssignmentScore{false, false, 0, 0}
+	switch attr.Value {
+	case "Not Graded":
+		*as = AssignmentScore{false, false, false, 0, 0}
 
 		return nil
-	} else if attr.Value == "Not Due" {
-		*as = AssignmentScore{false, true, 0, 0}
+	case "Not Due":
+		*as = AssignmentScore{false, true, false, 0, 0}
+
+		return nil
+	case "":
+		*as = AssignmentScore{false, false, true, 0, 0}
 
 		return nil
 	}
@@ -289,7 +298,7 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 		return err
 	}
 
-	*as = AssignmentScore{true, false, fs[0], fs[1]}
+	*as = AssignmentScore{true, false, false, fs[0], fs[1]}
 
 	return nil
 }
