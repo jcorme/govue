@@ -189,7 +189,7 @@ func (cs *Changeset) diffCourseAssignments() {
 			cc.AssignmentAdditions = append(cc.AssignmentAdditions, b)
 		}
 
-		if ps, ns := am.RawGradeScore, am.RawGradeScore; (ns - ps) != 0 {
+		if ps, ns := am.RawGradeScore, bm.RawGradeScore; (ns - ps) != 0 {
 			change := ns - ps
 
 			cc.GradeChange = &CourseGradeChange{
@@ -202,9 +202,9 @@ func (cs *Changeset) diffCourseAssignments() {
 			}
 		}
 
-		sum := len(cc.AssignmentChanges) + len(cc.AssignmentRemovals) + len(cc.AssignmentRemovals)
+		changed := len(cc.AssignmentChanges) | len(cc.AssignmentRemovals) | len(cc.AssignmentRemovals)
 
-		if cc.GradeChange != nil || sum > 0 {
+		if cc.GradeChange != nil || changed > 0 {
 			cs.CourseChanges = append(cs.CourseChanges, cc)
 		}
 	}
