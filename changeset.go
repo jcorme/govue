@@ -158,7 +158,7 @@ func (cs *Changeset) diffCourseAssignments() {
 		bm := bc.CurrentMark
 		cc := &CourseChange{Course: ac}
 
-		bAssignments := make([]*Assignment, 0, len(bm.Assignments))
+		bAssignments := make([]*Assignment, len(bm.Assignments))
 		copy(bAssignments, bm.Assignments)
 
 		notFoundAAssignments := make(map[string]*Assignment)
@@ -166,11 +166,10 @@ func (cs *Changeset) diffCourseAssignments() {
 
 		for k, a := range am.Assignments {
 			b := bAssignments[k]
+			bAssignments[k] = nil
 
 			if a.GradebookID == b.GradebookID {
 				cc.diffAssignments(a, b)
-
-				bAssignments = append(bAssignments[:k], bAssignments[k+1:]...)
 
 				continue
 			}
@@ -180,6 +179,10 @@ func (cs *Changeset) diffCourseAssignments() {
 		}
 
 		for k, b := range bAssignments {
+			if b == nil {
+				continue
+			}
+
 			gid := b.GradebookID
 
 			if a, ok := notFoundAAssignments[gid]; ok {
@@ -187,7 +190,7 @@ func (cs *Changeset) diffCourseAssignments() {
 
 				delete(notFoundAAssignments, gid)
 
-				bAssignments = append(bAssignments[:k], bAssignments[k+1:]...)
+				bAssignments[k] = nil
 
 				continue
 			}
