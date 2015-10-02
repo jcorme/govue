@@ -134,41 +134,64 @@ func (cs *Changeset) diffCourseSets() {
 }
 
 func (cs *Changeset) diffCourseAssignments() {
+	// @TODO: Move this into a separate function and check for it in the CalcChangeset
+	// before anything else is done and return an error if the semesters don't match.
+	aGradePeriod := cs.a.CurrentGradingPeriod.Name
+	bGradePeriod := cs.b.CurrentGradingPeriod.Name
+
+	if strings.Contains(aGradePeriod, "Q1") || strings.Contains(aGradePeriod, "Q2") {
+		if strings.Contains(bGradePeriod, "Q3") || strings.Contains(bGradePeriod, "Q4") {
+			return
+		}
+	} else if strings.Contains(aGradePeriod, "Q3") || strings.Contains(aGradePeriod, "Q4") {
+		if strings.Contains(bGradePeriod, "Q1") || strings.Contains(bGradePeriod, "Q2") {
+			return
+		}
+	}
+
 	aMap, bMap := cs.aMap, cs.bMap
 
 	for p, ac := range aMap {
 		bc := bMap[p]
 
-		aGradePeriod := cs.a.CurrentGradingPeriod.Name
-		bGradePeriod := cs.b.CurrentGradingPeriod.Name
-
-		if strings.Contains(aGradePeriod, "Q1") || strings.Contains(aGradePeriod, "Q2") {
-			if strings.Contains(bGradePeriod, "Q3") || strings.Contains(bGradePeriod, "Q4") {
-				return
-			}
-		} else if strings.Contains(aGradePeriod, "Q3") || strings.Contains(aGradePeriod, "Q4") {
-			if strings.Contains(bGradePeriod, "Q1") || strings.Contains(bGradePeriod, "Q2") {
-				return
-			}
-		}
-
 		am := ac.CurrentMark
 		bm := bc.CurrentMark
 		cc := &CourseChange{Course: ac}
+
+		bAssignments := make([]*Assignment, 0, len(bm.Assignments))
+		copy(bAssignments, bm.Assignments)
 
 		notFoundAAssignments := make(map[string]*Assignment)
 		notFoundBAssignments := make(map[string]*Assignment)
 
 		for k, a := range am.Assignments {
-			b := bm.Assignments[k]
+			b := bAssignments[k]
 
 			if a.GradebookID == b.GradebookID {
 				cc.diffAssignments(a, b)
+
+				bAssignments = append(bAssignments[:k], bAssignments[k+1:]...)
 
 				continue
 			}
 
 			notFoundAAssignments[a.GradebookID] = a
+			notFoundBAssignments[b.GradebookID] = b
+		}
+
+		for k, b := range bAssignments {
+			gid := b.GradebookID
+
+			if a, ok := notFoundAAssignments[gid]; ok {
+				cc.diffAssignments(a, b)
+
+				delete(notFoundAAssignments, gid)
+
+				bAssignments = append(bAssignments[:k], bAssignments[k+1:]...)
+
+				continue
+			}
+
 			notFoundBAssignments[b.GradebookID] = b
 		}
 
