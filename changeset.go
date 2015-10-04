@@ -228,7 +228,7 @@ func (cs *Changeset) diffCourseAssignments() {
 			}
 		}
 
-		changed := len(cc.AssignmentChanges) | len(cc.AssignmentRemovals) | len(cc.AssignmentRemovals)
+		changed := len(cc.AssignmentAdditions) | len(cc.AssignmentChanges) | len(cc.AssignmentRemovals)
 
 		if cc.GradeChange != nil || changed > 0 {
 			cs.CourseChanges = append(cs.CourseChanges, cc)
