@@ -1,6 +1,7 @@
 package govue
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -43,7 +44,19 @@ type CourseAssignmentChange struct {
 	PreviousPoints, NewPoints              *AssignmentPoints
 }
 
-func CalcChangeset(a *Gradebook, b *Gradebook) *Changeset {
+type SemesterMismatchError struct {
+	aSemester, bSemester int
+}
+
+func (s SemesterMismatchError) Error() string {
+	return fmt.Sprintf("The current grading periods of the two Gradebooks do not match: one is in semester %d and the other is in semester %d", s.aSemester, s.bSemester)
+}
+
+func CalcChangeset(a *Gradebook, b *Gradebook) (*Changeset, error) {
+	if as, bs, ok := gradebookSemestersMatch(a, b); !ok {
+		return nil, SemesterMismatchError{as, bs}
+	}
+
 	aMap, bMap := coursesAsMap(a.Courses, b.Courses)
 	cs := &Changeset{
 		a:    a,
@@ -55,7 +68,7 @@ func CalcChangeset(a *Gradebook, b *Gradebook) *Changeset {
 	cs.diffCourseSets()
 	cs.diffCourseAssignments()
 
-	return cs
+	return cs, nil
 }
 
 func coursesAsMap(acs, bcs []*Course) (acsMap, bcsMap map[int]*Course) {
@@ -134,21 +147,6 @@ func (cs *Changeset) diffCourseSets() {
 }
 
 func (cs *Changeset) diffCourseAssignments() {
-	// @TODO: Move this into a separate function and check for it in the CalcChangeset
-	// before anything else is done and return an error if the semesters don't match.
-	aGradePeriod := cs.a.CurrentGradingPeriod.Name
-	bGradePeriod := cs.b.CurrentGradingPeriod.Name
-
-	if strings.Contains(aGradePeriod, "Q1") || strings.Contains(aGradePeriod, "Q2") {
-		if strings.Contains(bGradePeriod, "Q3") || strings.Contains(bGradePeriod, "Q4") {
-			return
-		}
-	} else if strings.Contains(aGradePeriod, "Q3") || strings.Contains(aGradePeriod, "Q4") {
-		if strings.Contains(bGradePeriod, "Q1") || strings.Contains(bGradePeriod, "Q2") {
-			return
-		}
-	}
-
 	aMap, bMap := cs.aMap, cs.bMap
 
 	for p, ac := range aMap {
@@ -279,4 +277,21 @@ func findCourse(courses map[int]*Course, id string) (*Course, int, bool) {
 	}
 
 	return nil, 0, false
+}
+
+func gradebookSemestersMatch(a *Gradebook, b *Gradebook) (int, int, bool) {
+	aGradePeriod := a.CurrentGradingPeriod.Name
+	bGradePeriod := b.CurrentGradingPeriod.Name
+
+	if strings.Contains(aGradePeriod, "Q1") || strings.Contains(aGradePeriod, "Q2") {
+		if strings.Contains(bGradePeriod, "Q3") || strings.Contains(bGradePeriod, "Q4") {
+			return 1, 2, false
+		}
+	} else if strings.Contains(aGradePeriod, "Q3") || strings.Contains(aGradePeriod, "Q4") {
+		if strings.Contains(bGradePeriod, "Q1") || strings.Contains(bGradePeriod, "Q2") {
+			return 2, 1, false
+		}
+	}
+
+	return 0, 0, true
 }
