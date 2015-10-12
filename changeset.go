@@ -162,7 +162,16 @@ func (cs *Changeset) diffCourseAssignments() {
 		notFoundAAssignments := make(map[string]*Assignment)
 		notFoundBAssignments := make(map[string]*Assignment)
 
+		aCount := len(am.Assignments)
+		bCount := len(bAssignments)
+
 		for k, a := range am.Assignments {
+			if bCount < aCount && k >= bCount {
+				notFoundAAssignments[a.GradebookID] = a
+
+				continue
+			}
+
 			b := bAssignments[k]
 			bAssignments[k] = nil
 
