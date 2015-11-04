@@ -360,17 +360,3 @@ func stringsToFloats(strs []string) ([]float64, error) {
 
 	return fs, nil
 }
-
-// CurrentGradingPeriodIndex returns the position of the current grading
-// period in the ReportingPeriods field of a Gradebook.
-func (g *Gradebook) CurrentGradingPeriodIndex() int {
-	gradePeriod := g.CurrentGradingPeriod.Name
-
-	for _, p := range g.GradingPeriods {
-		if p.Name == gradePeriod {
-			return p.Index / 2
-		}
-	}
-
-	return 0
-}
