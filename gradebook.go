@@ -262,6 +262,9 @@ type AssignmentScore struct {
 	// or is in the gradebook just for organizational purposes (?)
 	NotForGrading bool
 
+	// Percentage indicates whether the score is a percentage rather than a raw score
+	Percentage bool
+
 	// Score is the number of points earned on the assignment by the student.
 	Score float64
 
@@ -276,6 +279,7 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 			Graded:        false,
 			NotDue:        false,
 			NotForGrading: false,
+			Percentage:    false,
 			Score:         0,
 			PossibleScore: 0,
 		}
@@ -286,6 +290,7 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 			Graded:        false,
 			NotDue:        true,
 			NotForGrading: false,
+			Percentage:    false,
 			Score:         0,
 			PossibleScore: 0,
 		}
@@ -296,6 +301,7 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 			Graded:        false,
 			NotDue:        false,
 			NotForGrading: true,
+			Percentage:    false,
 			Score:         0,
 			PossibleScore: 0,
 		}
@@ -304,6 +310,7 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 	}
 
 	const scoreRegex = "([\\d\\.]+)\\s*out\\s*of\\s*([\\d\\.]+)"
+	const pctScoreRegex = "([\\d\\.]+)"
 
 	r, err := regexp.Compile(scoreRegex)
 
@@ -311,10 +318,23 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 		return err
 	}
 
+	isPct := false
 	scores := r.FindStringSubmatch(attr.Value)
 
 	if len(scores) != 3 {
-		return fmt.Errorf("Expected assignment score in format `x out of y`, where x and y are real numbers, received %s and parsed %d numbers", attr.Value, len(scores))
+		r, err = regexp.Compile(pctScoreRegex)
+
+		if err != nil {
+			return err
+		}
+
+		scores = r.FindStringSubmatch(attr.Value)
+
+		if len(scores) != 2 {
+			return fmt.Errorf("Expected assignment score in format `x out of y`, where x and y are real numbers, or `x`, where x is a percentage, received %s and parsed %d numbers", attr.Value, len(scores))
+		}
+
+		isPct = true
 	}
 
 	fs, err := stringsToFloats(scores[1:])
@@ -323,12 +343,23 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 		return err
 	}
 
-	*as = AssignmentScore{
-		Graded:        true,
-		NotDue:        false,
-		NotForGrading: false,
-		Score:         fs[0],
-		PossibleScore: fs[1],
+	if isPct {
+		*as = AssignmentScore{
+			Graded:        true,
+			NotDue:        false,
+			NotForGrading: false,
+			Percentage:    true,
+			Score:         fs[0],
+			PossibleScore: 100,
+		}
+	} else {
+		*as = AssignmentScore{
+			Graded:        true,
+			NotDue:        false,
+			NotForGrading: false,
+			Score:         fs[0],
+			PossibleScore: fs[1],
+		}
 	}
 
 	return nil
