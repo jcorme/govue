@@ -54,7 +54,10 @@ func (s SemesterMismatchError) Error() string {
 
 func CalcChangeset(a *Gradebook, b *Gradebook) (*Changeset, error) {
 	if as, bs, ok := gradebookSemestersMatch(a, b); !ok {
-		return nil, SemesterMismatchError{as, bs}
+		return nil, SemesterMismatchError{
+			aSemester: as,
+			bSemester: bs,
+		}
 	}
 
 	aMap, bMap := coursesAsMap(a.Courses, b.Courses)
@@ -95,7 +98,12 @@ func (cs *Changeset) diffCourseSets() {
 		if found {
 			normalizedBMap[p] = c
 
-			cswitch := &CourseSwitch{ac, c, ac.Period, c.Period}
+			cswitch := &CourseSwitch{
+				Before:       ac,
+				After:        c,
+				BeforePeriod: ac.Period,
+				AfterPeriod:  c.Period,
+			}
 
 			cs.CourseSwitches = append(cs.CourseSwitches, cswitch)
 
@@ -260,19 +268,19 @@ func (cc *CourseChange) diffAssignments(a, b *Assignment) {
 	pointsIncrease := (b.Points.Points - a.Points.Points) > 0
 
 	ca := &CourseAssignmentChange{
-		a,
-		b,
-		nameChange,
-		scoreChange,
-		pointsChange,
-		scoreIncrease,
-		possibleScoreChange,
-		pointsIncrease,
-		possiblePointsChange,
-		&a.Score,
-		&b.Score,
-		&a.Points,
-		&b.Points,
+		Before:                 a,
+		After:                  b,
+		NameChange:             nameChange,
+		ScoreChange:            scoreChange,
+		PointsChange:           pointsChange,
+		ScoreIncrease:          scoreIncrease,
+		PossibleScoreChange:    possibleScoreChange,
+		PointsIncrease:         pointsIncrease,
+		PossiblePointsIncrease: possiblePointsChange,
+		PreviousScore:          &a.Score,
+		NewScore:               &b.Score,
+		PreviousPoints:         &a.Points,
+		NewPoints:              &b.Points,
 	}
 
 	cc.AssignmentChanges = append(cc.AssignmentChanges, ca)

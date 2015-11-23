@@ -56,7 +56,10 @@ func decodeSVUEResponse(body *bytes.Buffer) (*SVUEResponse, error) {
 	sVueResp := new(SVUEResponse)
 
 	if err := xml.Unmarshal(body.Bytes(), sVueResp); err != nil {
-		return nil, SVUEError{err, DecodingError}
+		return nil, SVUEError{
+			OrigError: err,
+			Code:      DecodingError,
+		}
 	}
 
 	return sVueResp, nil
@@ -71,7 +74,10 @@ func decodeStudentSignIn(sVueResp *SVUEResponse) (*Student, error) {
 	}
 
 	if err = d.Decode(resp); err != nil {
-		return nil, SVUEError{err, DecodingError}
+		return nil, SVUEError{
+			OrigError: err,
+			Code:      DecodingError,
+		}
 	}
 
 	return resp.Students[0], nil
@@ -86,7 +92,10 @@ func decodeStudentGrades(sVueResp *SVUEResponse) (*Gradebook, error) {
 	}
 
 	if err = d.Decode(gb); err != nil {
-		return nil, SVUEError{err, DecodingError}
+		return nil, SVUEError{
+			OrigError: err,
+			Code:      DecodingError,
+		}
 	}
 
 	for _, c := range gb.Courses {
@@ -104,7 +113,10 @@ TokenLoop:
 		t, err := d.Token()
 
 		if err == io.EOF {
-			return nil, SVUEError{err, DecodingError}
+			return nil, SVUEError{
+				OrigError: err,
+				Code:      DecodingError,
+			}
 		}
 
 		if _t, ok := t.(xml.StartElement); ok {
@@ -130,15 +142,27 @@ func decodeRespError(sVueResp *SVUEResponse) error {
 	err := xml.Unmarshal([]byte(sVueResp.Result), sErr)
 
 	if err != nil {
-		return SVUEError{err, DecodingError}
+		return SVUEError{
+			OrigError: err,
+			Code:      DecodingError,
+		}
 	}
 
 	switch {
 	case strings.Contains(sErr.Message, "The user name or password is incorrect."):
-		return SVUEError{nil, InvalidCredentialsError}
+		return SVUEError{
+			OrigError: nil,
+			Code:      InvalidCredentialsError,
+		}
 	case strings.Contains(sErr.Message, "Invalid user id or password"):
-		return SVUEError{nil, InvalidCredentialsError}
+		return SVUEError{
+			OrigError: nil,
+			Code:      InvalidCredentialsError,
+		}
 	default:
-		return SVUEError{nil, UnexpectedError}
+		return SVUEError{
+			OrigError: nil,
+			Code:      UnexpectedError,
+		}
 	}
 }

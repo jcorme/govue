@@ -196,7 +196,10 @@ func (cid *CourseID) UnmarshalXMLAttr(attr xml.Attr) error {
 		return fmt.Errorf("Unable to parse out course name and ID from `%s`, got `%v`", attr.Value, name)
 	}
 
-	*cid = CourseID{id, cname}
+	*cid = CourseID{
+		ID:   id,
+		Name: cname,
+	}
 
 	return nil
 }
@@ -269,15 +272,33 @@ type AssignmentScore struct {
 func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 	switch attr.Value {
 	case "Not Graded":
-		*as = AssignmentScore{false, false, false, 0, 0}
+		*as = AssignmentScore{
+			Graded:        false,
+			NotDue:        false,
+			NotForGrading: false,
+			Score:         0,
+			PossibleScore: 0,
+		}
 
 		return nil
 	case "Not Due":
-		*as = AssignmentScore{false, true, false, 0, 0}
+		*as = AssignmentScore{
+			Graded:        false,
+			NotDue:        true,
+			NotForGrading: false,
+			Score:         0,
+			PossibleScore: 0,
+		}
 
 		return nil
 	case "":
-		*as = AssignmentScore{false, false, true, 0, 0}
+		*as = AssignmentScore{
+			Graded:        false,
+			NotDue:        false,
+			NotForGrading: true,
+			Score:         0,
+			PossibleScore: 0,
+		}
 
 		return nil
 	}
@@ -302,7 +323,13 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 		return err
 	}
 
-	*as = AssignmentScore{true, false, false, fs[0], fs[1]}
+	*as = AssignmentScore{
+		Graded:        true,
+		NotDue:        false,
+		NotForGrading: false,
+		Score:         fs[0],
+		PossibleScore: fs[1],
+	}
 
 	return nil
 }
@@ -340,7 +367,10 @@ func (ap *AssignmentPoints) UnmarshalXMLAttr(attr xml.Attr) error {
 		return err
 	}
 
-	*ap = AssignmentPoints{fs[0], fs[1]}
+	*ap = AssignmentPoints{
+		Points:         fs[0],
+		PossiblePoints: fs[1],
+	}
 
 	return nil
 }
