@@ -99,7 +99,11 @@ func decodeStudentGrades(sVueResp *SVUEResponse) (*Gradebook, error) {
 	}
 
 	for _, c := range gb.Courses {
-		c.CurrentMark = c.Marks[0]
+		if len(c.Marks) < 1 {
+			c.CurrentMark = &CourseMark{}
+		} else {
+			c.CurrentMark = c.Marks[0]
+		}
 	}
 
 	return gb, nil
