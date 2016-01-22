@@ -49,10 +49,12 @@ const (
 					<parent>0</parent>
 					<webServiceHandleName>PXPWebServices</webServiceHandleName>
 					<methodName>Gradebook</methodName>
-					<paramStr>&lt;Parms&gt;&lt;ChildIntID&gt;0&lt;/ChildIntID&gt;&lt;/Parms&gt;</paramStr>
+					%s
 				</ProcessWebServiceRequest>
 			</soap:Body>
 		</soap:Envelope>`
+	getGradesParamStr            = `<paramStr>&lt;Parms&gt;&lt;ChildIntID&gt;0&lt;/ChildIntID&gt;&lt;/Parms&gt;</paramStr>`
+	getGradesParamStrGradePeriod = `<paramStr>&lt;Parms&gt;&lt;ChildIntID&gt;0&lt;/ChildIntID&gt;&lt;ReportPeriod&gt;%d&lt;/ReportPeriod&gt;&lt;/Parms&gt;</paramStr>`
 )
 
 func SignInStudent(username, password string) (*Student, error) {
@@ -76,6 +78,18 @@ func SignInStudent(username, password string) (*Student, error) {
 }
 
 func GetStudentGrades(username, password string) (*Gradebook, error) {
+	return GetStudentGradesForGradingPeriod(username, password, -1)
+}
+
+func GetStudentGradesForGradingPeriod(username, password string, gradingPeriodIndex int) (*Gradebook, error) {
+	var paramStr string
+
+	if gradingPeriodIndex < 0 {
+		paramStr = getGradesParamStr
+	} else {
+		paramStr = fmt.Sprintf(getGradesParamStrGradePeriod, gradingPeriodIndex)
+	}
+
 	escapedAuth, err := escapeStringsForXml(username, password)
 
 	if err != nil {
@@ -85,7 +99,7 @@ func GetStudentGrades(username, password string) (*Gradebook, error) {
 	username = escapedAuth[0]
 	password = escapedAuth[1]
 
-	gradesBody := fmt.Sprintf(getGradesRequestBody, username, password)
+	gradesBody := fmt.Sprintf(getGradesRequestBody, username, password, paramStr)
 	sResp, err := callApi(strings.NewReader(gradesBody))
 
 	if err != nil {
