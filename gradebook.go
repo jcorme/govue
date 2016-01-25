@@ -246,10 +246,6 @@ func (gd *GradebookDate) UnmarshalXMLAttr(attr xml.Attr) error {
 	return nil
 }
 
-func (gd *GradebookDate) String() string {
-	return gd.Format("1/2/2006")
-}
-
 // An AssignmentScore holds the score information for a single assignment for a student.
 type AssignmentScore struct {
 	// Graded denotes whether the assignment has been graded or not.
