@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -366,6 +367,9 @@ func (as *AssignmentScore) UnmarshalXMLAttr(attr xml.Attr) error {
 // score is a raw score, while the points may be either the score scaled up or down
 // to affect the student's actual grade differently.
 type AssignmentPoints struct {
+	// Graded denotes whether the assignment has been graded or not.
+	Graded bool
+
 	// Points is the number of points that the student received on the assignment.
 	Points float64
 
@@ -374,29 +378,58 @@ type AssignmentPoints struct {
 }
 
 func (ap *AssignmentPoints) UnmarshalXMLAttr(attr xml.Attr) error {
-	const pointsRegex = "([\\d\\.]+)\\/([\\d\\.]+)"
+	if strings.Contains(attr.Value, "Points Possible") {
+		const pointsRegex = "([\\d\\.]+)\\s*Points\\s*Possible"
 
-	r, err := regexp.Compile(pointsRegex)
+		r, err := regexp.Compile(pointsRegex)
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	points := r.FindStringSubmatch(attr.Value)
+		possiblePoints := r.FindStringSubmatch(attr.Value)
 
-	if len(points) != 3 {
-		return fmt.Errorf("Expected points attribute in format `x/y`, received %s and parsed %d numbers", attr.Value, len(points))
-	}
+		if len(possiblePoints) != 2 {
+			return fmt.Errorf("Expected points attribute in format `x Points Possible`, received %s and parsed %d values", attr.Value, len(possiblePoints))
+		}
 
-	fs, err := stringsToFloats(points[1:])
+		val, err := stringsToFloats(possiblePoints[1:])
 
-	if err != nil {
-		return err
-	}
+		if err != nil {
+			return err
+		}
 
-	*ap = AssignmentPoints{
-		Points:         fs[0],
-		PossiblePoints: fs[1],
+		*ap = AssignmentPoints{
+			Graded:         false,
+			Points:         0,
+			PossiblePoints: val[0],
+		}
+	} else {
+		const pointsRegex = "([\\d\\.]+)\\s*\\/\\s*([\\d\\.]+)"
+
+		r, err := regexp.Compile(pointsRegex)
+
+		if err != nil {
+			return err
+		}
+
+		points := r.FindStringSubmatch(attr.Value)
+
+		if len(points) != 3 {
+			return fmt.Errorf("Expected points attribute in format `x/y`, received %s and parsed %d numbers", attr.Value, len(points))
+		}
+
+		fs, err := stringsToFloats(points[1:])
+
+		if err != nil {
+			return err
+		}
+
+		*ap = AssignmentPoints{
+			Graded:         true,
+			Points:         fs[0],
+			PossiblePoints: fs[1],
+		}
 	}
 
 	return nil
