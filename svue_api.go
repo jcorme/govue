@@ -20,11 +20,7 @@ type SVUESignInResponse struct {
 }
 
 const (
-	sVueEndpoint = "https://student-portland.cascadetech.org/portland/Service/PXPCommunication.asmx"
 	soapAction   = "http://edupoint.com/webservices/ProcessWebServiceRequest"
-)
-
-const (
 	signInRequestBody = `<?xml version="1.0" encoding="utf-8"?>
 		<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
 			<soap:Body>
@@ -57,7 +53,8 @@ const (
 	getGradesParamStrGradePeriod = `<paramStr>&lt;Parms&gt;&lt;ChildIntID&gt;0&lt;/ChildIntID&gt;&lt;ReportPeriod&gt;%d&lt;/ReportPeriod&gt;&lt;/Parms&gt;</paramStr>`
 )
 
-func SignInStudent(username, password string) (*Student, error) {
+
+func SignInStudent(username, password, endpoint string) (*Student, error) {
 	escapedAuth, err := escapeStringsForXml(username, password)
 
 	if err != nil {
@@ -68,7 +65,7 @@ func SignInStudent(username, password string) (*Student, error) {
 	password = escapedAuth[1]
 
 	signInBody := fmt.Sprintf(signInRequestBody, username, password)
-	sResp, err := callApi(strings.NewReader(signInBody))
+	sResp, err := callApi(strings.NewReader(signInBody), endpoint)
 
 	if err != nil {
 		return nil, err
@@ -77,11 +74,11 @@ func SignInStudent(username, password string) (*Student, error) {
 	return decodeStudentSignIn(sResp)
 }
 
-func GetStudentGrades(username, password string) (*Gradebook, error) {
-	return GetStudentGradesForGradingPeriod(username, password, -1)
+func GetStudentGrades(username, password, endpoint string) (*Gradebook, error) {
+	return GetStudentGradesForGradingPeriod(username, password, endpoint, -1)
 }
 
-func GetStudentGradesForGradingPeriod(username, password string, gradingPeriodIndex int) (*Gradebook, error) {
+func GetStudentGradesForGradingPeriod(username,  password, endpoint string, gradingPeriodIndex int) (*Gradebook, error) {
 	var paramStr string
 
 	if gradingPeriodIndex < 0 {
@@ -100,7 +97,7 @@ func GetStudentGradesForGradingPeriod(username, password string, gradingPeriodIn
 	password = escapedAuth[1]
 
 	gradesBody := fmt.Sprintf(getGradesRequestBody, username, password, paramStr)
-	sResp, err := callApi(strings.NewReader(gradesBody))
+	sResp, err := callApi(strings.NewReader(gradesBody), endpoint)
 
 	if err != nil {
 		return nil, err
@@ -109,8 +106,8 @@ func GetStudentGradesForGradingPeriod(username, password string, gradingPeriodIn
 	return decodeStudentGrades(sResp)
 }
 
-func callApi(body io.Reader) (*SVUEResponse, error) {
-	req, err := newSVueRequest(body)
+func callApi(body io.Reader, endpoint string) (*SVUEResponse, error) {
+	req, err := newSVueRequest(body, endpoint)
 
 	if err != nil {
 		return nil, err
@@ -131,8 +128,8 @@ func callApi(body io.Reader) (*SVUEResponse, error) {
 	return decodeSVUEResponse(buf)
 }
 
-func newSVueRequest(body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest("POST", sVueEndpoint, body)
+func newSVueRequest(body io.Reader, endpoint string) (*http.Request, error) {
+	req, err := http.NewRequest("POST", endpoint, body)
 
 	if err != nil {
 		return nil, err
